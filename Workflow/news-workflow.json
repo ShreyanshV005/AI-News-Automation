@@ -1,0 +1,285 @@
+{
+  "name": "news",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -304,
+        272
+      ],
+      "id": "3a342f40-eb59-4f76-bc7d-708c395a43da",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "maxItems": 10
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        144,
+        272
+      ],
+      "id": "956aa439-592a-4f4b-8575-12dc05ec3eca",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -80,
+        272
+      ],
+      "id": "eb9180d9-bfaa-4b77-8ddf-fdfe46ba332a",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "jsCode": "const seenTitles = new Set();\n\nreturn items.filter(item => {\n  const title = item.json.title\n    .toLowerCase()\n    .replace(/[^\\w\\s]/g, \"\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n\n  if (seenTitles.has(title)) {\n    return false;\n  }\n\n  seenTitles.add(title);\n  return true;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        272
+      ],
+      "id": "d672bb15-3014-4994-a72b-fa9adf605732",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert news editor.\n\nSummarize the following article in 2-3 sentences.\n\nThen classify it into ONE category only.\n\nCategories\n\nAI\n\nTechnology\n\nBusiness\n\nFinance\n\nPolitics\n\nSports\n\nHealth\n\nScience\n\nEntertainment\n\nWorld\n\nOther\n\nTitle\n\n{{$json.title}}\n\nContent\n\n{{$json.contentSnippet}}\n\nReturn ONLY JSON\n\n{\n\"title\":\"\",\n\"category\":\"\",\n\"summary\":\"\"\n}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        592,
+        272
+      ],
+      "id": "3b198417-08c3-4bae-b9ba-2eeb0143cbf9",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "llama-3.3-70b-versatile",
+          "mode": "list",
+          "cachedResultName": "llama-3.3-70b-versatile"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        496
+      ],
+      "id": "a62ea738-a28f-444d-a9e8-6620e3f8dff5",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "HuCQsu5lIs8q6vUI",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\n      \"type\": \"string\"\n    },\n    \"category\": {\n      \"type\": \"string\"\n    },\n    \"summary\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"title\",\n    \"category\",\n    \"summary\"\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        736,
+        496
+      ],
+      "id": "e9136fad-e2c5-46c3-b5ed-07b32a36e4d4",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => ({\n  json: {\n    title: item.json.output.title,\n    category: item.json.output.category,\n    summary: item.json.output.summary,\n    link: item.json.link,\n    pubDate: item.json.pubDate\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        272
+      ],
+      "id": "6bc5d8cc-08d0-48f2-a219-0ace095d1224",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "let html = `\n<!DOCTYPE html>\n<html>\n<head>\n<style>\nbody{\nfont-family:Arial,sans-serif;\nbackground:#f4f4f4;\npadding:30px;\n}\n.container{\nmax-width:900px;\nmargin:auto;\nbackground:white;\npadding:30px;\nborder-radius:12px;\n}\nh1{\ncolor:#1a73e8;\n}\n.card{\nmargin-bottom:25px;\npadding:20px;\nborder-left:5px solid #1a73e8;\nbackground:#fafafa;\nborder-radius:8px;\n}\n.category{\ndisplay:inline-block;\nbackground:#1a73e8;\ncolor:white;\npadding:4px 10px;\nborder-radius:20px;\nfont-size:12px;\nmargin-bottom:10px;\n}\na{\ntext-decoration:none;\ncolor:#1a73e8;\nfont-weight:bold;\n}\nhr{\nmargin-top:25px;\n}\n</style>\n</head>\n\n<body>\n\n<div class=\"container\">\n\n<h1>📰 Daily News Digest</h1>\n\n<p>Top AI summarized news for today.</p>\n`;\n\nfor (const item of items) {\n\nconst news = item.json;\n\nhtml += `\n\n<div class=\"card\">\n\n<div class=\"category\">${news.category}</div>\n\n<h2>${news.title}</h2>\n\n<p>${news.summary}</p>\n\n<p>\n<a href=\"${news.link}\" target=\"_blank\">\nRead Full Article →\n</a>\n</p>\n\n</div>\n\n`;\n\n}\n\nhtml += `\n\n</div>\n\n</body>\n</html>\n`;\n\nreturn [\n{\njson:{\nhtml\n}\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        272
+      ],
+      "id": "33d29872-59e1-43dc-a52e-c6be1f08dde2",
+      "name": "html"
+    },
+    {
+      "parameters": {
+        "sendTo": "shreyanshverma139@gmail.com",
+        "subject": "=📰 Daily News Digest | {{$now.format(\"DD MMM YYYY\")}}",
+        "message": "={{$json.html}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1392,
+        272
+      ],
+      "id": "f25a6e8b-9a8b-4ced-987f-c52141a6851b",
+      "name": "Send a message",
+      "webhookId": "dc4d6270-9f3e-469a-a340-0af6444decbd",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "EhCCxVsGJl9jzWya",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "html",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "html": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a52d3c59-4ee3-4c0f-bc5c-1b41c39eabf8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5e5379ff5632935032f53af07c8d2027843f32170c98729803237ebb3a1e0616"
+  },
+  "nodeGroups": [],
+  "id": "bI5G6twOwxhQePJB",
+  "tags": []
+}
